@@ -24,7 +24,7 @@ const particleOptions = {
 const initialState = {
   input: '',
   imageUrl: '',
-  box: {},
+  boxes: [],
   route: 'signin',
   isSignedIn: false,
   user: {
@@ -52,21 +52,23 @@ class App extends Component {
       }})
     }
 
-    calculateFaceLocation = (data) => {
-      const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
-      const image = document.getElementById('inputimage');
-      const width = Number(image.width);
-      const height = Number(image.height);
-      return {
-        leftCol: clarifaiFace.left_col * width,
-        topRow: clarifaiFace.top_row * height,
-        rightCol: width - (clarifaiFace.right_col * width),
-        bottomRow: height - (clarifaiFace.bottom_row * height),
-      }
+    calculateFaceLocations = (data) => {
+      return data.outputs[0].data.regions.map(face => {
+        const clarifaiFace = face.region_info.bounding_box;
+        const image = document.getElementById('inputimage');
+        const width = Number(image.width);
+        const height = Number(image.height);
+        return {
+          leftCol: clarifaiFace.left_col * width,
+          topRow: clarifaiFace.top_row * height,
+          rightCol: width - (clarifaiFace.right_col * width),
+          bottomRow: height - (clarifaiFace.bottom_row * height),
+        }
+      });
     }
 
-    displayFaceBox = (box) => {
-      this.setState({box: box});
+    displayFaceBoxes = (boxes) => {
+      this.setState({boxes: boxes});
     }
 
     onInputChange = (event) => {
@@ -75,7 +77,8 @@ class App extends Component {
 
     onSubmit = () => {
       this.setState({imageUrl: this.state.input});
-      fetch('https://sleepy-thicket-87801.herokuapp.com/imageUrl', {
+      // https://sleepy-thicket-87801.herokuapp.com/imageUrl
+      fetch('http://localhost:3000/imageUrl', {
         method: 'post',
         headers: {'Content-Type': "application/json"},
         body: JSON.stringify({
@@ -85,7 +88,8 @@ class App extends Component {
       .then(response => response.json())
       .then(response => {
         if (response) {
-          fetch('https://sleepy-thicket-87801.herokuapp.com/image', {
+          // https://sleepy-thicket-87801.herokuapp.com/image
+          fetch('http://localhost:3000/image', {
             method: 'put',
             headers: {'Content-Type': "application/json"},
             body: JSON.stringify({
@@ -98,7 +102,7 @@ class App extends Component {
             })
             .catch(console.log)
         }
-        this.displayFaceBox(this.calculateFaceLocation(response))
+        this.displayFaceBoxes(this.calculateFaceLocations(response))
       })
 
       .catch(err => console.log(err))
@@ -114,7 +118,7 @@ class App extends Component {
     }
 
     render() {
-      const {isSignedIn, imageUrl, route, box} = this.state;
+      const {isSignedIn, imageUrl, route, boxes} = this.state;
     return (
       <div className="App">
         <Particles className='particles' params={particleOptions} />
@@ -124,7 +128,7 @@ class App extends Component {
               <Logo />
               <Rank name={this.state.user.name} entries={this.state.user.entries} />
               <ImageLinkForm onInputChange={this.onInputChange} onSubmit={this.onSubmit}/>
-              <FaceRecognition box={box} imageUrl={imageUrl} />
+              <FaceRecognition boxes={boxes} imageUrl={imageUrl} />
             </div>
           : (
               route === 'signin'
